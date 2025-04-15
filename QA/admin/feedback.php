@@ -1,4 +1,7 @@
 <?php
+session_start();
+include 'header.php';
+include 'sidebar.php';
 require_once '../config.php';
 
 // Fetch all offices for dropdown
@@ -54,69 +57,17 @@ function calculateRating($row) {
     $avg = array_sum($validRatings) / count($validRatings);
     return round($avg, 1);
 }
-
-// Function to get full feedback details
-function getFeedbackDetails($conn, $feedback_id) {
-    $query = "
-        SELECT 
-            f.*, 
-            o.office_name,
-            DATE_FORMAT(f.visit_date, '%Y-%m-%d') as visit_date,
-            DATE_FORMAT(f.submitted_at, '%Y-%m-%d %H:%i:%s') as submitted_at
-        FROM feedback f
-        LEFT JOIN offices o ON f.office_id = o.office_id
-        WHERE f.feedback_id = ?
-    ";
-    
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        return ['error' => 'Database query failed: ' . $conn->error];
-    }
-    
-    $stmt->bind_param('i', $feedback_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows === 0) {
-        return ['error' => 'Feedback not found'];
-    }
-    
-    return $result->fetch_assoc();
-}
-
-// Check if we're requesting feedback details via AJAX
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'get_feedback' && isset($_GET['feedback_id'])) {
-    $feedback_id = intval($_GET['feedback_id']);
-    $feedback = getFeedbackDetails($conn, $feedback_id);
-    
-    if ($feedback) {
-        // Map numeric values to their meanings
-        $cc1_map = [
-            '1' => 'I know what a CC is and I saw this office\'s CC',
-            '2' => 'I know what a CC is but I did NOT see this office\'s CC',
-            '3' => 'I learned of the CC only when I saw this office\'s CC',
-            '4' => 'I do not know what a CC is and I did not see one'
-        ];
-        
-        $feedback['cc1_text'] = isset($cc1_map[$feedback['cc1']]) ? $cc1_map[$feedback['cc1']] : $feedback['cc1'];
-        
-        header('Content-Type: application/json');
-        echo json_encode($feedback);
-        exit();
-    } else {
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Feedback not found']);
-        exit();
-    }
-}
 ?>
 
-<div class="feedback-section">
+<div class="main-content">
     <div class="header">
-        <h1 class="page-title">Client Feedback</h1>
+        <h1 class="page-title">Feedbacks</h1>
         <div class="user-profile">
-            <div class="user-avatar">QA</div>
-            <span>QA Admin</span>
+            <div class="notification-icon" style="position: relative; margin-right: 10px;">
+                <i class="fas fa-bell" style="font-size: 20px;"></i>
+            </div>
+            <div class="user-avatar">AD</div>
+            <span>Admin</span>
         </div>
     </div>
 
@@ -172,11 +123,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'get_feedback' && isset($_GET['fee
                                 <td><?php echo htmlspecialchars($row['comment_type'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($row['comments'] ?? 'No comment'); ?></td>
                                 <td>
-                                    <button class="btn btn-sm btn-primary view-btn"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#viewFeedbackModal"
-                                            data-feedback-id="<?php echo htmlspecialchars($row['feedback_id']); ?>">
-                                        <i class="fas fa-eye"></i> View
+                                    <button type="button" class="btn btn-primary view-btn" 
+                                            data-feedback-id="<?php echo htmlspecialchars($row['feedback_id']); ?>" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#feedbackModal">
+                                        View 
                                     </button>
                                 </td>
                             </tr>
@@ -192,138 +143,91 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'get_feedback' && isset($_GET['fee
     </div>
 </div>
 
-<!-- View Feedback Modal -->
-<div class="modal fade" id="viewFeedbackModal" tabindex="-1" aria-labelledby="viewFeedbackModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="viewFeedbackModalLabel">Feedback Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background-color: blue; color: white;">
+                <h5 class="modal-title" id="feedbackModalLabel">Feedback Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <table class="table table-bordered">
-                    <tbody id="feedback-details">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <p><strong>Date of Visit:</strong> <span id="modal-visit-date"></span></p>
+                <p><strong>Age:</strong> <span id="modal-age"></span></p>
+                <p><strong>Sex:</strong> <span id="modal-sex"></span></p>
+                <p><strong>Region:</strong> <span id="modal-region"></span></p>
+                <p><strong>Office:</strong> <span id="modal-office-name"></span></p>
+                <p><strong>Service Availed:</strong> <span id="modal-service-availed"></span></p>
+                <p><strong>Community:</strong> <span id="modal-community"></span></p>
+                <p><strong>CC1:</strong> <span id="modal-cc1"></span></p>
+                <p><strong>CC2:</strong> <span id="modal-cc2"></span></p>
+                <p><strong>CC3:</strong> <span id="modal-cc3"></span></p>
+                <p><strong>SQD0:</strong> <span id="modal-sqd0"></span></p>
+                <p><strong>SQD1:</strong> <span id="modal-sqd1"></span></p>
+                <p><strong>SQD2:</strong> <span id="modal-sqd2"></span></p>
+                <p><strong>SQD3:</strong> <span id="modal-sqd3"></span></p>
+                <p><strong>SQD4:</strong> <span id="modal-sqd4"></span></p>
+                <p><strong>SQD5:</strong> <span id="modal-sqd5"></span></p>
+                <p><strong>SQD6:</strong> <span id="modal-sqd6"></span></p>
+                <p><strong>SQD7:</strong> <span id="modal-sqd7"></span></p>
+                <p><strong>SQD8:</strong> <span id="modal-sqd8"></span></p>
+                <p><strong>Comment Type:</strong> <span id="modal-comment-type"></span></p>
+                <p><strong>Comments:</strong> <span id="modal-comments"></span></p>
+                <p><strong>Phone Number:</strong> <span id="modal-phone-number"></span></p>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize all view buttons
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const feedbackId = btn.dataset.feedbackId;
-            fetchFeedbackDetails(feedbackId);
+document.addEventListener('DOMContentLoaded', function() {
+    const viewButtons = document.querySelectorAll('.view-btn');
+
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const feedbackId = this.getAttribute('data-feedback-id');
+            fetchFeedbackData(feedbackId);
         });
     });
 });
 
-function fetchFeedbackDetails(feedbackId) {
-    // Show loading state
-    const tbody = document.getElementById('feedback-details');
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="2" class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p>Loading feedback details...</p>
-            </td>
-        </tr>
-    `;
-
-    // Fetch the details from the same page
-    fetch(`?section=feedback&ajax=get_feedback&feedback_id=${feedbackId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+function fetchFeedbackData(feedbackId) {
+    fetch('get_feedback.php?id=' + feedbackId)
+        .then(response => response.json())
         .then(data => {
+            console.log(data); // For debugging
             if (data.error) {
-                throw new Error(data.error);
+                console.error(data.error);
+                return;
             }
-            populateFeedbackModal(data);
+
+            // Populate the modal fields with the retrieved data
+            document.getElementById('modal-visit-date').innerText = data.visit_date || 'N/A';
+            document.getElementById('modal-age').innerText = data.age || 'N/A';
+            document.getElementById('modal-sex').innerText = data.sex || 'N/A';
+            document.getElementById('modal-region').innerText = data.region || 'N/A';
+            document.getElementById('modal-phone-number').innerText = data.phone_number || 'N/A';
+            document.getElementById('modal-office-name').innerText = data.office_name || 'N/A';
+            document.getElementById('modal-service-availed').innerText = data.service_availed || 'N/A';
+            document.getElementById('modal-community').innerText = data.community || 'N/A';
+            document.getElementById('modal-cc1').innerText = data.cc1 || 'N/A';
+            document.getElementById('modal-cc2').innerText = data.cc2 || 'N/A';
+            document.getElementById('modal-cc3').innerText = data.cc3 || 'N/A';
+            document.getElementById('modal-sqd0').innerText = data.sqd0 || 'N/A';
+            document.getElementById('modal-sqd1').innerText = data.sqd1 || 'N/A';
+            document.getElementById('modal-sqd2').innerText = data.sqd2 || 'N/A';
+            document.getElementById('modal-sqd3').innerText = data.sqd3 || 'N/A';
+            document.getElementById('modal-sqd4').innerText = data.sqd4 || 'N/A';
+            document.getElementById('modal-sqd5').innerText = data.sqd5 || 'N/A';
+            document.getElementById('modal-sqd6').innerText = data.sqd6 || 'N/A';
+            document.getElementById('modal-sqd7').innerText = data.sqd7 || 'N/A';
+            document.getElementById('modal-sqd8').innerText = data.sqd8 || 'N/A';
+            document.getElementById('modal-comments').innerText = data.comments || 'No comment';
+            document.getElementById('modal-comment-type').innerText = data.comment_type || 'N/A';
+
+            // Show the modal
+            $('#feedbackModal').modal('show');
         })
-        .catch(error => {
-            console.error('Error fetching feedback:', error);
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="2" class="text-danger">Error loading feedback details: ${error.message}</td>
-                </tr>
-            `;
-        });
-}
-
-function populateFeedbackModal(data) {
-    const tbody = document.getElementById('feedback-details');
-    tbody.innerHTML = '';
-
-    const addRow = (label, value) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <th style="width: 30%;">${label}</th>
-            <td>${value || 'N/A'}</td>
-        `;
-        tbody.appendChild(row);
-    };
-
-    // Personal Information
-    addRow('Feedback ID', data.feedback_id);
-    addRow('Visit Date', data.visit_date);
-    addRow('Age', data.age || 'N/A');
-    addRow('Sex', data.sex || 'N/A');
-    addRow('Region', data.region || 'N/A');
-    addRow('Phone Number', data.phone_number || 'N/A');
-    
-    // Office Information
-    addRow('Office', data.office_name || 'N/A');
-    addRow('Service Availed', data.service_availed || 'N/A');
-    addRow('Community', data.community || 'N/A');
-    
-    // Citizen's Charter
-    addRow('CC1. Awareness of Citizen\'s Charter', data.cc1_text || 'N/A');
-    addRow('CC2. Visibility of CC', data.cc2 || 'N/A');
-    addRow('CC3. Helpfulness of CC', data.cc3 || 'N/A');
-    
-    // Service Quality Dimensions
-    addRow('SQD0. Overall Satisfaction', formatRating(data.sqd0));
-    addRow('SQD1. Responsiveness', formatRating(data.sqd1));
-    addRow('SQD2. Reliability', formatRating(data.sqd2));
-    addRow('SQD3. Access and Facilities', formatRating(data.sqd3));
-    addRow('SQD4. Communication', formatRating(data.sqd4));
-    addRow('SQD5. Costs', formatRating(data.sqd5));
-    addRow('SQD6. Integrity', formatRating(data.sqd6));
-    addRow('SQD7. Assurance', formatRating(data.sqd7));
-    addRow('SQD8. Outcome', formatRating(data.sqd8));
-    
-    // Comments
-    addRow('Comment Type', data.comment_type || 'N/A');
-    addRow('Comments', data.comments || 'No comments provided');
-    
-    // Metadata
-    addRow('Submitted At', data.submitted_at || 'N/A');
-}
-
-function formatRating(value) {
-    if (!value || value === 'NA') return 'N/A';
-
-    const ratingMap = {
-        '1': '1 - Strongly Disagree',
-        '2': '2 - Disagree',
-        '3': '3 - Neutral',
-        '4': '4 - Agree',
-        '5': '5 - Strongly Agree'
-    };
-
-    return ratingMap[value] || value;
+        .catch(error => console.error('Error fetching feedback:', error));
 }
 </script>
