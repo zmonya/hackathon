@@ -22,14 +22,15 @@ if ($selected_office !== 'all') {
 
 // Fetch feedback data
 $query = "
-    SELECT f.feedback_id, f.visit_date, o.office_name, f.service_availed, f.comment_type, f.comments,
-           f.sqd0, f.sqd1, f.sqd2, f.sqd3, f.sqd4, f.sqd5, f.sqd6, f.sqd7, f.sqd8
+    SELECT f.feedback_id, f.visit_date, o.office_name, f.service_availed, f.service_type, f.comments,
+           f.sqd0, f.sqd1, f.sqd2, f.sqd3, f.sqd4, f.sqd5, f.sqd6, f.sqd7, f.sqd8,
+           f.sqd_average, f.community
     FROM feedback f
     LEFT JOIN offices o ON f.office_id = o.office_id
     $where_clause
-    ORDER BY f.visit_date DESC
-    LIMIT 10
+    ORDER BY f.feedback_id DESC
 ";
+
 
 if ($where_clause) {
     $stmt = $conn->prepare($query);
@@ -41,35 +42,10 @@ if ($where_clause) {
 } else {
     $result = $conn->query($query);
 }
-
-// Calculate average rating
-function calculateRating($row) {
-    $ratings = [
-        $row['sqd0'], $row['sqd1'], $row['sqd2'], $row['sqd3'],
-        $row['sqd4'], $row['sqd5'], $row['sqd6'], $row['sqd7'], $row['sqd8']
-    ];
-    $validRatings = array_filter($ratings, function($val) {
-        return $val !== 'NA' && is_numeric($val);
-    });
-    if (empty($validRatings)) {
-        return 'N/A';
-    }
-    $avg = array_sum($validRatings) / count($validRatings);
-    return round($avg, 1);
-}
 ?>
 
 <div class="main-content">
-    <div class="header">
-        <h1 class="page-title">Feedbacks</h1>
-        <div class="user-profile">
-            <div class="notification-icon" style="position: relative; margin-right: 10px;">
-                <i class="fas fa-bell" style="font-size: 20px;"></i>
-            </div>
-            <div class="user-avatar">AD</div>
-            <span>Admin</span>
-        </div>
-    </div>
+    <?php include 'notification.php'; ?>
 
     <div class="chart-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -88,45 +64,58 @@ function calculateRating($row) {
             </form>
         </div>
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Office</th>
-                        <th>Service Availed</th>
-                        <th>Rating</th>
-                        <th>Comment Type</th>
-                        <th>Comment</th>
-                        <th>Action</th>
+                        <th class="text-center">Date</th>
+                        <th class="text-center">Office</th>
+                        <th class="text-center">Service Availed</th>
+                        <th class="text-center">Community</th>
+                        <th class="text-center">Rating</th>
+                        <th class="text-center">Service Type</th>
+                        <th class="text-center">Comment</th>
+                        <th class="text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($result && $result->num_rows > 0): ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
                             <?php
-                            $rating = calculateRating($row);
-                            $ratingClass = $rating !== 'N/A' ? 'rating-' . ceil($rating) : '';
+                            $rating = $row['sqd_average'];
+                            $ratingClass = $rating !== null ? 'rating-' . ceil($rating) : '';
                             ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($row['visit_date']); ?></td>
-                                <td><?php echo htmlspecialchars($row['office_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($row['service_availed'] ?? 'N/A'); ?></td>
-                                <td>
-                                    <?php if ($rating !== 'N/A'): ?>
+                                <td class="text-center"><?php echo htmlspecialchars($row['visit_date']); ?></td>
+                                <td class="text-center"><?php echo htmlspecialchars($row['office_name'] ?? 'N/A'); ?></td>
+                                <td class="text-center"><?php echo htmlspecialchars($row['service_availed'] ?? 'N/A'); ?></td>
+                                <td class="text-center"><?php echo htmlspecialchars($row['community'] ?? 'N/A'); ?></td>
+                                <?php 
+                                $rating = $row['sqd_average'];
+                                if ($rating !== null && is_numeric($rating)) {
+                                    $ratingClass = 'rating-' . min(5, max(1, floor($rating))); // Round to nearest whole number
+                                } else {
+                                    $ratingClass = '';
+                                }
+                                ?>
+                                <td class="text-center">
+                                    <?php if ($rating !== null && is_numeric($rating)): ?>
                                         <span class="rating-badge <?php echo $ratingClass; ?>">
-                                            <?php echo htmlspecialchars($rating); ?>
+                                            <?php echo number_format($rating, 1); ?>
                                         </span>
                                     <?php else: ?>
-                                        N/A
+                                        <span class="rating-badge">N/A</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($row['comment_type'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($row['comments'] ?? 'No comment'); ?></td>
-                                <td>
-                                    <button type="button" class="btn btn-primary view-btn" 
+                                <td class="text-center"><?php echo htmlspecialchars($row['service_type'] ?? 'N/A'); ?></td>
+                                <td class="text-center">
+                                    <?php echo htmlspecialchars(!empty($row['comments']) ? $row['comments'] : 'No comment'); ?>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-primary view-btn" 
                                             data-feedback-id="<?php echo htmlspecialchars($row['feedback_id']); ?>" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#feedbackModal">
+                                            <i class="fas fa-eye"></i>
                                         View 
                                     </button>
                                 </td>
@@ -134,7 +123,7 @@ function calculateRating($row) {
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7">No feedback available.</td>
+                            <td colspan="8">No feedback available.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -156,6 +145,7 @@ function calculateRating($row) {
                 <p><strong>Age:</strong> <span id="modal-age"></span></p>
                 <p><strong>Sex:</strong> <span id="modal-sex"></span></p>
                 <p><strong>Region:</strong> <span id="modal-region"></span></p>
+                
                 <p><strong>Office:</strong> <span id="modal-office-name"></span></p>
                 <p><strong>Service Availed:</strong> <span id="modal-service-availed"></span></p>
                 <p><strong>Community:</strong> <span id="modal-community"></span></p>
@@ -171,7 +161,8 @@ function calculateRating($row) {
                 <p><strong>SQD6:</strong> <span id="modal-sqd6"></span></p>
                 <p><strong>SQD7:</strong> <span id="modal-sqd7"></span></p>
                 <p><strong>SQD8:</strong> <span id="modal-sqd8"></span></p>
-                <p><strong>Comment Type:</strong> <span id="modal-comment-type"></span></p>
+                <p><strong>Average Rating:</strong> <span id="modal-sqd-average"></span></p>
+                <p><strong>Service Type:</strong> <span id="modal-service-type"></span></p>
                 <p><strong>Comments:</strong> <span id="modal-comments"></span></p>
                 <p><strong>Phone Number:</strong> <span id="modal-phone-number"></span></p>
             </div>
@@ -180,6 +171,17 @@ function calculateRating($row) {
 </div>
 
 <script>
+$(document).ready(function() {
+    $('.table').DataTable({
+        "order": [[0, "desc"]], 
+        "paging": true,
+        "searching": true,
+        "ordering": true,
+        "info": true
+
+    });
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const viewButtons = document.querySelectorAll('.view-btn');
 
@@ -195,18 +197,18 @@ function fetchFeedbackData(feedbackId) {
     fetch('get_feedback.php?id=' + feedbackId)
         .then(response => response.json())
         .then(data => {
-            console.log(data); // For debugging
+            console.log(data);
             if (data.error) {
                 console.error(data.error);
                 return;
             }
 
-            // Populate the modal fields with the retrieved data
+            // Populate the modal fields
             document.getElementById('modal-visit-date').innerText = data.visit_date || 'N/A';
             document.getElementById('modal-age').innerText = data.age || 'N/A';
             document.getElementById('modal-sex').innerText = data.sex || 'N/A';
             document.getElementById('modal-region').innerText = data.region || 'N/A';
-            document.getElementById('modal-phone-number').innerText = data.phone_number || 'N/A';
+            
             document.getElementById('modal-office-name').innerText = data.office_name || 'N/A';
             document.getElementById('modal-service-availed').innerText = data.service_availed || 'N/A';
             document.getElementById('modal-community').innerText = data.community || 'N/A';
@@ -222,12 +224,17 @@ function fetchFeedbackData(feedbackId) {
             document.getElementById('modal-sqd6').innerText = data.sqd6 || 'N/A';
             document.getElementById('modal-sqd7').innerText = data.sqd7 || 'N/A';
             document.getElementById('modal-sqd8').innerText = data.sqd8 || 'N/A';
+            document.getElementById('modal-sqd-average').innerText = data.sqd_average ? number_format(data.sqd_average, 1) : 'N/A';
+            document.getElementById('modal-service-type').innerText = data.service_type || 'N/A';
             document.getElementById('modal-comments').innerText = data.comments || 'No comment';
-            document.getElementById('modal-comment-type').innerText = data.comment_type || 'N/A';
+            document.getElementById('modal-phone-number').innerText = data.phone_number || 'N/A';
 
-            // Show the modal
             $('#feedbackModal').modal('show');
         })
         .catch(error => console.error('Error fetching feedback:', error));
+}
+
+function number_format(number, decimals) {
+    return parseFloat(number).toFixed(decimals);
 }
 </script>

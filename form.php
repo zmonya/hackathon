@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Feedback Form</title>
+    <title>Feedback Form</title>
     <!-- Bootstrap CSS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -63,7 +63,7 @@
                 <h1 class="h2">CLIENT'S FEEDBACK FORM</h1>
             </div>
             
-            <form action="process_feedback.php" method="post">
+            <form action="process_form.php" method="post">
                 <!-- Personal Information Section -->
                 <div class="section">
                     <h2 class="h4 mb-4">Personal Information</h2>
@@ -106,9 +106,13 @@
                                 <option value="" disabled selected>Select an office</option>
                                 <?php
                                 require_once 'config.php';
-                                $result = $conn->query("SELECT office_id, office_name FROM offices");
-                                while ($row = $result->fetch_assoc()) {
-                                    echo "<option value=\"{$row['office_id']}\">{$row['office_name']}</option>";
+                                $result = $conn->query("SELECT office_id, office_name FROM offices WHERE is_active = 1 ORDER BY office_name");
+                                if ($result->num_rows > 0) {
+                                    while ($row = $result->fetch_assoc()) {
+                                        echo "<option value=\"{$row['office_id']}\">{$row['office_name']}</option>";
+                                    }
+                                } else {
+                                    echo "<option value=\"\" disabled>No active offices available</option>";
                                 }
                                 ?>
                             </select>
@@ -321,21 +325,23 @@
                     </div>
                 </div>
 
-                <!-- Suggestions Section -->
-                <div class="section">
-                    <h2 class="h4 mb-3">Suggestions/Recommendations/Comments:</h2>
-                    <h2 class="h4 mb-3">Comment Type:</h2>
+                <div>
+                    <h2 class="h4 mb-3">Service Type:</h2>
                     <div class="d-flex gap-4 mb-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="comment_type" id="good" value="Good" required>
+                            <input class="form-check-input" type="radio" name="service_type" id="good" value="Good" required>
                             <label class="form-check-label" for="good">Good</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="comment_type" id="bad" value="Bad">
+                            <input class="form-check-input" type="radio" name="service_type" id="bad" value="Bad" required>
                             <label class="form-check-label" for="bad">Bad</label>
                         </div>
                     </div>
-                    
+                </div>
+
+                <!-- Suggestions Section -->
+                <div class="section">
+                    <h2 class="h4 mb-3">Suggestions/Recommendations/Comments:</h2>
                     <textarea class="form-control" name="comments" rows="4" placeholder="Please provide any additional feedback..."></textarea>
                 </div>
 
@@ -345,7 +351,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label for="phone_number" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone_number" name="phone_number" placeholder="Enter your phone number" required>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" placeholder="Enter your phone number">
                         </div>
                     </div>
                 </div>

@@ -1,7 +1,8 @@
 <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>Feedback System</h2>
+            <h2>Feed Forward</h2>
+            <h6 class="text-center">Admin</h6>
         </div>
         <div class="sidebar-menu">
             <a href="dashboard.php" class="menu-item active">
@@ -14,7 +15,11 @@
             </a>
             <a href="feedback.php" class="menu-item">
                 <i class="fas fa-comment-alt"></i>
-                <span>Feedback</span>
+                <span>Feedbacks</span>
+            </a>
+            <a href="office_management.php" class="menu-item">
+                <i class="fas fa-building"></i>
+                <span>Office Management</span>
             </a>
             <a href="user_management.php" class="menu-item">
                 <i class="fas fa-users-cog"></i>
@@ -42,19 +47,7 @@
                     }
                 });
             });
-            document.addEventListener('DOMContentLoaded', () => {
-                const currentPage = window.location.pathname.split('/').pop();
-                const menuItems = document.querySelectorAll('.menu-item');
-                
-                menuItems.forEach(item => {
-                    const href = item.getAttribute('href');
-                    if (href && currentPage.includes(href.split('/').pop())) {
-                        item.classList.add('active');
-                    } else {
-                        item.classList.remove('active');
-                    }
-                });
-            });
+        
             function confirmLogout() {
                 return confirm("Are you sure you want to log out?");
             }   

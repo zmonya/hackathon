@@ -33,9 +33,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Redirect based on role_id (adjust as needed)
             if ($user['role_id'] == 1) {
+                $_SESSION['success'] = "Login successfully!";
                 header("Location: user/dashboard.php");
                 exit();
             } else {
+                $_SESSION['success'] = "Login successfully!";
                 header("Location: admin/dashboard.php");
                 exit();
             }
@@ -94,18 +96,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-       
-
-       
-
-        /* Main Content Styles */
+    
         .main-content {
             margin-left: var(--sidebar-width);
             width: calc(100% - var(--sidebar-width));
             padding: 20px;
         }
-
-        
 
         .page-title {
             font-size: 22px;
@@ -118,7 +114,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>Feedback System</h2>
+            <h2>Feed Forward</h2>
         </div>
         </div>
     </div>
@@ -157,3 +153,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 </body>
 </html>
+

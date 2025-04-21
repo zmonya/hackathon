@@ -57,21 +57,12 @@ if (!$users) {
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
     
-    <div class="header">
-                <h1 class="page-title">User Management</h1>
-                <div class="user-profile">
-                    <div class="notification-icon" style="position: relative; margin-right: 10px;">
-                        <i class="fas fa-bell" style="font-size: 20px;"></i>
-                    </div>
-                    <div class="user-avatar">AD</div>
-                    <span>Admin</span>
-                </div>
-            </div>
+    <?php include 'notification.php'; ?>
     
     <div class="chart-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="chart-title mb-0">Users</h3>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
                 <i class="fas fa-plus me-2"></i>Add User
             </button>
         </div>
@@ -80,36 +71,36 @@ if (!$users) {
             <table class="table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>First Name</th>
-                        <th>Middle Name</th>
-                        <th>Last Name</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Office</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        
+                        <th class="text-center">First Name</th>
+                        <th class="text-center">Middle Name</th>
+                        <th class="text-center">Last Name</th>
+                        <th class="text-center">Username</th>
+                        <th class="text-center">Role</th>
+                        <th class="text-center">Office</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php while ($user = $users->fetch_assoc()): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($user['user_id']); ?></td>
-                            <td><?php echo htmlspecialchars($user['fname']); ?></td>
-                            <td><?php echo htmlspecialchars($user['mname'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($user['lname']); ?></td>
-                            <td><?php echo htmlspecialchars($user['username']); ?></td>
-                            <td><?php echo htmlspecialchars($user['role_name']); ?></td>
-                            <td><?php echo htmlspecialchars($user['office_name'] ?? 'N/A'); ?></td>
+                            
+                            <td class="text-center"><?php echo htmlspecialchars($user['fname']); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($user['mname'] ?? ''); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($user['lname']); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($user['username']); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($user['role_name']); ?></td>
+                            <td class="text-center"><?php echo htmlspecialchars($user['office_name'] ?? 'N/A'); ?></td>
                            
-                            <td>
+                            <td class="text-center">
                                 <span class="badge status-badge bg-<?= $user['is_active'] ? 'success' : 'danger' ?>">
                                     <?= $user['is_active'] ? 'Active' : 'Inactive' ?>
                                 </span>
                             </td>
                             
-                            <td>
-                                <div class="d-flex gap-2">
+                            <td class="text-center">
+                                
                                     <button class="btn btn-sm btn-primary edit-user-btn" 
                                         data-bs-toggle="modal" 
                                         data-bs-target="#editUserModal"
@@ -124,12 +115,12 @@ if (!$users) {
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     
-                                    <a href="toggle_user.php?action=toggle_status&id=<?= $user['user_id'] ?>" 
+                                    <a href="process_user.php?action=toggle_status&id=<?= $user['user_id'] ?>" 
                                        class="btn btn-sm btn-<?= $user['is_active'] ? 'danger' : 'success' ?>">
                                         <i class="fas <?= $user['is_active'] ? 'fa-user-slash' : 'fa-user-check' ?>"></i>
                                         <?= $user['is_active'] ? 'Deactivate' : 'Activate' ?>
                                     </a>
-                                </div>
+                            
                             </td>
                         </tr>
                     <?php endwhile; ?>
@@ -147,7 +138,7 @@ if (!$users) {
                 <h5 class="modal-title" id="addUserModalLabel">Create User</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="create_user.php">
+            <form method="POST" action="process_user.php">
                 <div class="modal-body">
                     <input type="hidden" name="action" value="add_user">
                     
@@ -173,14 +164,14 @@ if (!$users) {
                         </div>
                         <div class="col-md-6">
                             <label for="password" class="form-label">Password *</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="8">
                         </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="role_id" class="form-label">Role *</label>
-                            <select class="form-select" id="role_id" name="role_id" required onchange="toggleOfficeField()">
+                            <select class="form-select" id="role_id" name="role_id" required>
                                 <option value="">Select Role</option>
                                 <?php
                                 $roles = $conn->query("SELECT role_id, role_name FROM roles");
@@ -192,7 +183,7 @@ if (!$users) {
                         </div>
                         <div class="col-md-6" id="officeField">
                             <label for="office_id" class="form-label">Office</label>
-                            <select class="form-select" id="office_id" name="office_id">
+                            <select class="form-select" id="office_id" name="office_id" required>
                                 <option value="">Select Office</option>
                                 <?php
                                 $offices = $conn->query("SELECT office_id, office_name FROM offices");
@@ -205,8 +196,8 @@ if (!$users) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Create</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success">Create</button>
                 </div>
             </form>
         </div>
@@ -221,7 +212,7 @@ if (!$users) {
                 <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="update_user.php">
+            <form method="POST" action="process_user.php">
                 <div class="modal-body">
                     <input type="hidden" name="action" value="edit_user">
                     <input type="hidden" id="edit_user_id" name="user_id">
@@ -248,7 +239,7 @@ if (!$users) {
                         </div>
                         <div class="col-md-6">
                             <label for="edit_password" class="form-label">Password (leave blank to keep current)</label>
-                            <input type="password" class="form-control" id="edit_password" name="password">
+                            <input type="password" class="form-control" id="edit_password" name="password" minlength="8">
                         </div>
                     </div>
                     
@@ -267,7 +258,7 @@ if (!$users) {
                         </div>
                         <div class="col-md-6" id="editOfficeField">
                             <label for="edit_office_id" class="form-label">Office</label>
-                            <select class="form-select" id="edit_office_id" name="office_id">
+                            <select class="form-select" id="edit_office_id" name="office_id" required>
                                 <option value="">Select Office</option>
                                 <?php
                                 $offices = $conn->query("SELECT office_id, office_name FROM offices");
@@ -280,8 +271,8 @@ if (!$users) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
                 </div>
             </form>
         </div>
@@ -289,45 +280,17 @@ if (!$users) {
 </div>
 
 <script>
-// Function to toggle office field visibility based on role selection
-function toggleOfficeField() {
-    const roleSelect = document.getElementById('role_id');
-    const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-    const roleName = selectedOption.getAttribute('data-role-name');
-    const officeField = document.getElementById('officeField');
-    
-    if (roleName && roleName.toLowerCase() === 'admin') {
-        officeField.style.display = 'none';
-        document.getElementById('office_id').value = '';
-    } else {
-        officeField.style.display = 'block';
-    }
-}
-
-// Function for edit modal
-function toggleEditOfficeField() {
-    const roleSelect = document.getElementById('edit_role_id');
-    const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-    const roleName = selectedOption.getAttribute('data-role-name');
-    const officeField = document.getElementById('editOfficeField');
-    
-    if (roleName && roleName.toLowerCase() === 'admin') {
-        officeField.style.display = 'none';
-        document.getElementById('edit_office_id').value = '';
-    } else {
-        officeField.style.display = 'block';
-    }
-}
+$(document).ready(function() {
+    $('.table').DataTable({
+        "paging": true, // Enable pagination
+        "searching": true, // Enable search
+        "ordering": true, // Enable sorting
+        "info": true // Show info
+    });
+});
 
 // Initialize event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Add event listener for role change in add modal
-    document.getElementById('role_id').addEventListener('change', toggleOfficeField);
-    
-    // Add event listener for role change in edit modal
-    document.getElementById('edit_role_id').addEventListener('change', toggleEditOfficeField);
-    
-    // Populate edit modal with user data from data attributes
     document.querySelectorAll('.edit-user-btn').forEach(button => {
         button.addEventListener('click', function() {
             // Get all data attributes
@@ -371,10 +334,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Trigger initial state for add modal
-    toggleOfficeField();
-
-   // Function to show alert message
 function showAlert(message, type = 'success') {
     // Remove any existing alerts
     const existingAlerts = document.querySelectorAll('.alert-dismissible');

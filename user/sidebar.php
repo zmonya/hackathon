@@ -1,7 +1,8 @@
 <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>Feedback System</h2>
+            <h2>Feed Forward</h2>
+            <h6 class="text-center">Office</h6>
         </div>
         <div class="sidebar-menu">
             <a href="dashboard.php" class="menu-item active">

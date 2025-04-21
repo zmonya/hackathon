@@ -15,7 +15,7 @@ $feedback_id = intval($_GET['id']);
 $query = "SELECT f.visit_date, f.age, f.sex, f.region, f.phone_number, 
                  f.service_availed, f.community, f.cc1, f.cc2, f.cc3, 
                  f.sqd0, f.sqd1, f.sqd2, f.sqd3, f.sqd4, f.sqd5, 
-                 f.sqd6, f.sqd7, f.sqd8, f.comment_type, f.comments, 
+                 f.sqd6, f.sqd7, f.sqd8, f.sqd_average, f.service_type, f.comments, 
                  f.submitted_at, o.office_name
           FROM feedback f
           LEFT JOIN offices o ON f.office_id = o.office_id

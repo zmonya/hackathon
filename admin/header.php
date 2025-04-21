@@ -8,8 +8,16 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+
+    <!-- DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    
     <style>
-        :root {
+            :root {
             --sidebar-width: 250px;
             --primary-color: #1a3c5e;
             --secondary-color: #f4f7fa;
@@ -206,14 +214,74 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: bold;
+            color: white;
+            background: #757575; /* Default gray for N/A */
         }
 
-        .rating-5 { background: #2e7d32; color: white; }
-        .rating-4 { background: #4caf50; color: white; }
-        .rating-3 { background: #ffb300; color: #333; }
-        .rating-2 { background: #f57c00; color: white; }
-        .rating-1 { background: #d32f2f; color: white; }
+        .rating-badge.rating-5 { background: #2e7d32; } /* Dark green */
+        .rating-badge.rating-4 { background: #4caf50; } /* Green */
+        .rating-badge.rating-3 { background: #ffb300; color: #333; } /* Yellow */
+        .rating-badge.rating-2 { background: #f57c00; } /* Orange */
+        .rating-badge.rating-1 { background: #d32f2f; } /* Red */
+        .rating-badge { background: #757575; } /* Default gray for N/A */
+
+        /* Notification styles */
+        .notification-icon {
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.3s;
+        }
+
+        .notification-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .notification-icon .badge {
+            font-size: 0.6rem;
+            padding: 3px 6px;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+
+        .list-group-item {
+            border-left: 4px solid;
+            border-left-color: var(--bs-gray-200);
+            transition: all 0.2s;
+            margin-bottom: 5px;
+        }
+
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+            border-left-color: var(--bs-primary);
+        }
+
+        /* Color coding for ratings */
+        .bg-success {
+            background-color: #2e7d32 !important;
+        }
+
+        .bg-warning {
+            background-color: #ffb300 !important;
+            color: #000 !important;
+        }
+
+        .bg-danger {
+            background-color: #d32f2f !important;
+        }
+
+        /* Service type badges */
+        .badge-success {
+            background-color: #2e7d32;
+        }
+
+        .badge-danger {
+            background-color: #d32f2f;
+        }
     </style>
 </head>
 
         
+    </div>
+</body>
+</html>

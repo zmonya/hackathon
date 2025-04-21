@@ -18,36 +18,8 @@ $total_feedback_stmt->execute();
 $total_feedback_result = $total_feedback_stmt->get_result();
 $total_feedback = $total_feedback_result->fetch_assoc()['total'] ?? 0;
 
-// 2. Avg. Satisfaction
-$avg_satisfaction_query = "
-    SELECT 
-        SUM(
-            COALESCE(NULLIF(sqd0, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd1, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd2, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd3, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd4, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd5, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd6, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd7, 'NA'), 0) + 
-            COALESCE(NULLIF(sqd8, 'NA'), 0)
-        ) / 
-        NULLIF(
-            SUM(
-                (CASE WHEN sqd0 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd1 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd2 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd3 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd4 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd5 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd6 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd7 IN ('1','2','3','4','5') THEN 1 ELSE 0 END) +
-                (CASE WHEN sqd8 IN ('1','2','3','4','5') THEN 1 ELSE 0 END)
-            ),
-            0
-        ) as overall_avg
-    FROM feedback
-";
+// 2. Avg. Satisfaction - Now using the pre-calculated sqd_average
+$avg_satisfaction_query = "SELECT AVG(sqd_average) as overall_avg FROM feedback WHERE sqd_average IS NOT NULL";
 $avg_satisfaction_stmt = $conn->prepare($avg_satisfaction_query);
 $avg_satisfaction_stmt->execute();
 $avg_satisfaction_result = $avg_satisfaction_stmt->get_result();
@@ -57,7 +29,7 @@ if ($avg_row && $avg_row['overall_avg'] !== null) {
     $avg_satisfaction = round($avg_row['overall_avg'], 1);
 }
 
-// 3. Response Rate
+// 3. Response Rate (unchanged)
 $response_rate_query = "
     SELECT 
         (SUM(CASE WHEN comments IS NOT NULL AND comments != '' THEN 1 ELSE 0 END) / COUNT(*)) * 100 as rate
@@ -69,14 +41,14 @@ $response_rate_result = $response_rate_stmt->get_result();
 $response_rate = $response_rate_result->fetch_assoc()['rate'] ?? 0;
 $response_rate = $total_feedback ? round($response_rate) : 0;
 
-// 4. Satisfaction by Office
+// 4. Satisfaction by Office - Now using sqd_average
 $satisfaction_by_office_query = "
     SELECT 
         o.office_name, 
-        AVG(CAST(f.sqd0 AS DECIMAL)) as avg_rating
+        AVG(f.sqd_average) as avg_rating
     FROM feedback f
     JOIN offices o ON f.office_id = o.office_id
-    WHERE f.sqd0 != 'NA' AND f.sqd0 IN ('1', '2', '3', '4', '5')
+    WHERE f.sqd_average IS NOT NULL
     GROUP BY o.office_id, o.office_name
     ORDER BY o.office_name
 ";
@@ -133,7 +105,7 @@ while ($row = $rating_breakdown_result->fetch_assoc()) {
     $rating_counts[] = $row['count'];
 }
 
-// 6. Monthly Satisfaction Trend
+// 6. Monthly Satisfaction Trend - Now using sqd_average
 $selected_office = $_GET['trend_office_id'] ?? 'all';
 $trend_where_clause = '';
 $trend_params = [];
@@ -148,7 +120,7 @@ $monthly_trend_query = "
     SELECT 
         o.office_name,
         DATE_FORMAT(f.visit_date, '%Y-%m') as month,
-        AVG(CASE WHEN f.sqd0 != 'NA' AND f.sqd0 IN ('1', '2', '3', '4', '5') THEN CAST(f.sqd0 AS DECIMAL) END) as avg_rating
+        AVG(f.sqd_average) as avg_rating
     FROM feedback f
     JOIN offices o ON f.office_id = o.office_id
     $trend_where_clause
@@ -193,16 +165,26 @@ $offices_result = $conn->query($offices_query);
 <body>
     <div class="main-content">
         <div class="dashboard-section active">
-            <div class="header">
-                <h1 class="page-title">Dashboard</h1>
-                <div class="user-profile">
-                    <div class="notification-icon" style="position: relative; margin-right: 10px;">
-                        <i class="fas fa-bell" style="font-size: 20px;"></i>
-                    </div>
-                    <div class="user-avatar">AD</div>
-                    <span>Admin</span>
-                </div>
+
+            <!-- Success/Error Message Display -->
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php echo $_SESSION['success']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php echo $_SESSION['error']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+
+            
+            <?php include 'notification.php'; ?>
 
             <div class="card-container">
                 <div class="card">
@@ -366,8 +348,12 @@ $offices_result = $conn->query($offices_query);
                     datasets: datasets.length ? datasets : [{
                         label: 'No Data',
                         data: [0],
-                        borderColor: '#ccc',
-                        backgroundColor: '#ccc'
+                        backgroundColor: 'rgba(26, 60, 94, 0.2)',
+                            borderColor: 'rgba(26, 60, 94, 1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
+                        
                     }]
                 },
                 options: {
@@ -399,15 +385,3 @@ $offices_result = $conn->query($offices_query);
     </script>
 </body>
 
-<?php
-// Clean up
-$total_feedback_stmt->close();
-$avg_satisfaction_stmt->close();
-$response_rate_stmt->close();
-$satisfaction_by_office_stmt->close();
-$rating_breakdown_stmt->close();
-if (isset($monthly_trend_stmt)) {
-    $monthly_trend_stmt->close();
-}
-$conn->close();
-?>

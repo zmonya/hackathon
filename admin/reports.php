@@ -75,7 +75,7 @@ $query = "
     SELECT 
         o.office_name,
         $period_format,
-        AVG(CASE WHEN f.sqd0 != 'NA' AND f.sqd0 IN ('1', '2', '3', '4', '5') THEN CAST(f.sqd0 AS DECIMAL) END) AS avg_rating,
+        AVG(CASE WHEN f.sqd_average != 'NA' THEN CAST(f.sqd_average AS DECIMAL(10,1)) END) AS avg_rating,
         COUNT(f.feedback_id) AS responses
     FROM feedback f
     LEFT JOIN offices o ON f.office_id = o.office_id
@@ -108,16 +108,7 @@ try {
 ?>
 
 <div class="main-content">
-    <div class="header">
-                <h1 class="page-title">Reports</h1>
-                <div class="user-profile">
-                    <div class="notification-icon" style="position: relative; margin-right: 10px;">
-                        <i class="fas fa-bell" style="font-size: 20px;"></i>
-                    </div>
-                    <div class="user-avatar">AD</div>
-                    <span>Admin</span>
-                </div>
-            </div>
+    <?php include 'notification.php'; ?>
 
     <div class="chart-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -133,7 +124,7 @@ try {
                 </form>
                 <form method="GET" action="?section=reports" class="d-inline">
                     <input type="hidden" name="period" value="<?php echo htmlspecialchars($selected_period); ?>">
-                    <select name="office_id" class="form-select form-select-sm" style="width: 200px;" onchange="this.form.submit()">
+                    <select name="office_id" class="form-select form-select-sm" style="width: 150px;" onchange="this.form.submit()">
                         <option value="all" <?php echo $selected_office === 'all' ? 'selected' : ''; ?>>All Offices</option>
                         <?php while ($office = $offices_result->fetch_assoc()): ?>
                             <option value="<?php echo htmlspecialchars($office['office_id']); ?>"
@@ -145,45 +136,83 @@ try {
                     </select>
                 </form>
                 <form id="download-form" class="d-inline">
-                    <select name="format" id="download-format" class="form-select form-select-sm" style="width: 120px;" onchange="downloadReport(this.value)">
-                        <option value="csv" <?php echo $selected_format === 'csv' ? 'selected' : ''; ?>>CSV</option>
-                        <option value="pdf" <?php echo $selected_format === 'pdf' ? 'selected' : ''; ?>>PDF</option>
+                    <select name="format" id="download-format" class="form-select form-select-sm" style="width: 150px;" onchange="downloadReport(this.value)">
+                        <option value="" selected hidden>Download</option>
+                        <option value="csv">CSV</option>
+                        <option value="pdf">PDF</option>
                     </select>
                 </form>
             </div>
         </div>
-        <table class="table" id="reports-table">
-            <thead>
-                <tr>
-                    <th class="text-center">Office</th>
-                    <th class="text-center">Period</th>
-                    <th class="text-center">Avg. Rating</th>
-                    <th class="text-center">Responses</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ($result && $result->num_rows > 0): ?>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                        <tr>
-                            <td class="text-center"><?php echo htmlspecialchars($row['office_name'] ?? 'N/A'); ?></td>
-                            <td class="text-center"><?php echo htmlspecialchars($row['period'] ?? 'N/A'); ?></td>
-                            <td class="text-center"><?php echo $row['avg_rating'] ? round($row['avg_rating'], 1) : 'N/A'; ?></td>
-                            <td class="text-center"><?php echo number_format($row['responses']); ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                <?php else: ?>
+        <div>
+            <table class="table table-striped table-hover" id="reports-table">
+                <thead>
                     <tr>
-                        <td colspan="4">No data available.</td>
+                        <th class="text-center">Office</th>
+                        <th class="text-center">Period</th>
+                        <th class="text-center">Avg. Rating</th>
+                        <th class="text-center">Responses</th>
                     </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php if ($result && $result->num_rows > 0): ?>
+                        <?php while ($row = $result->fetch_assoc()): ?>
+                            <tr>
+                                <td class="text-center"><?php echo htmlspecialchars($row['office_name'] ?? 'N/A'); ?></td>
+                                <td class="text-center" data-sort="<?php 
+                                    $period = $row['period'] ?? '';
+                                    if ($period === 'N/A') {
+                                        echo '0';
+                                    } elseif ($selected_period === 'weekly') {
+                                        $dates = explode(' - ', $period);
+                                        echo strtotime($dates[0] ?? '');
+                                    } elseif ($selected_period === 'monthly') {
+                                        echo strtotime($period);
+                                    } elseif ($selected_period === 'yearly' && is_numeric($period)) {
+                                        echo strtotime("$period-01-01");
+                                    } else {
+                                        echo strtotime($period);
+                                    }
+                                ?>">
+                                    <?php echo htmlspecialchars($period); ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php 
+                                    $rating = $row['avg_rating'] ? number_format(round($row['avg_rating'], 1), 1) : 'N/A';
+                                    $ratingClass = is_numeric($rating) ? 'rating-' . floor($rating) : '';
+                                    ?>
+                                    <span class="rating-badge <?php echo $ratingClass; ?>">
+                                        <?php echo $rating; ?>
+                                    </span>
+                                </td>
+                                <td class="text-center"><?php echo number_format($row['responses']); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4">No data available.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 <script>
+$(document).ready(function() {
+    $('.table').DataTable({
+        "paging": true,
+        "order": [[1, "desc"]], // Sort by period column (index 1) descending
+        "searching": true,
+        "ordering": true,
+        "info": true,
+    });
+});
+
 function downloadReport(format) {
     const table = document.getElementById('reports-table');
     const rows = table.querySelectorAll('tbody tr');
@@ -205,8 +234,13 @@ function downloadReport(format) {
             if (cells.length >= 4) {
                 const office = cells[0].textContent.trim();
                 let period = cells[1].textContent.trim();
-                const avgRating = cells[2].textContent.trim();
+                let avgRating = cells[2].textContent.trim();
                 const responses = cells[3].textContent.trim();
+
+                // Ensure decimal format for ratings
+                if (avgRating !== 'N/A' && !isNaN(avgRating)) {
+                    avgRating = parseFloat(avgRating).toFixed(1);
+                }
 
                 // Format period for Excel compatibility
                 if (periodType === 'monthly') {
@@ -280,11 +314,3 @@ function downloadReport(format) {
     }
 }
 </script>
-
-<?php
-// Close any open resources
-if (isset($stmt)) {
-    $stmt->close();
-}
-$conn->close();
-?>

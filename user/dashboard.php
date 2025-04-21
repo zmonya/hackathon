@@ -20,13 +20,12 @@ $total_feedback_stmt->execute();
 $total_feedback_result = $total_feedback_stmt->get_result();
 $total_feedback = $total_feedback_result->fetch_assoc()['total'] ?? 0;
 
-// 2. Average Satisfaction (using only sqd0 to match the office chart)
+// 2. Average Satisfaction (using sqd_average)
 $avg_satisfaction_query = "
-    SELECT AVG(CAST(sqd0 AS DECIMAL)) as overall_avg
+    SELECT AVG(sqd_average) as overall_avg
     FROM feedback
     WHERE office_id = ? 
-    AND sqd0 != 'NA' 
-    AND sqd0 IN ('1', '2', '3', '4', '5')
+    AND sqd_average IS NOT NULL
 ";
 $avg_satisfaction_stmt = $conn->prepare($avg_satisfaction_query);
 $avg_satisfaction_stmt->bind_param('i', $user_office_id);
@@ -49,28 +48,27 @@ $response_rate_result = $response_rate_stmt->get_result();
 $response_rate = $response_rate_result->fetch_assoc()['rate'] ?? 0;
 $response_rate = $total_feedback ? round($response_rate) : 0;
 
-// 4. Satisfaction by Office (using sqd0 only - original design)
-$satisfaction_by_office_query = "
+// 4. Monthly Satisfaction Trend (using sqd_average)
+$monthly_trend_query = "
     SELECT 
-        o.office_name, 
-        AVG(CAST(f.sqd0 AS DECIMAL)) as avg_rating
-    FROM feedback f
-    JOIN offices o ON f.office_id = o.office_id
-    WHERE f.sqd0 != 'NA' 
-    AND f.sqd0 IN ('1', '2', '3', '4', '5')
-    AND f.office_id = ?
-    GROUP BY o.office_id, o.office_name
-    ORDER BY o.office_name
+        DATE_FORMAT(visit_date, '%Y-%m') as month,
+        AVG(sqd_average) as avg_rating
+    FROM feedback
+    WHERE office_id = ?
+    AND sqd_average IS NOT NULL
+    GROUP BY YEAR(visit_date), MONTH(visit_date)
+    ORDER BY YEAR(visit_date), MONTH(visit_date)
 ";
-$satisfaction_by_office_stmt = $conn->prepare($satisfaction_by_office_query);
-$satisfaction_by_office_stmt->bind_param('i', $user_office_id);
-$satisfaction_by_office_stmt->execute();
-$satisfaction_by_office_result = $satisfaction_by_office_stmt->get_result();
-$office_labels = [];
-$office_ratings = [];
-while ($row = $satisfaction_by_office_result->fetch_assoc()) {
-    $office_labels[] = $row['office_name'];
-    $office_ratings[] = round($row['avg_rating'], 1);
+$monthly_trend_stmt = $conn->prepare($monthly_trend_query);
+$monthly_trend_stmt->bind_param('i', $user_office_id);
+$monthly_trend_stmt->execute();
+$monthly_trend_result = $monthly_trend_stmt->get_result();
+
+$month_labels = [];
+$month_ratings = [];
+while ($row = $monthly_trend_result->fetch_assoc()) {
+    $month_labels[] = $row['month'];
+    $month_ratings[] = round($row['avg_rating'], 1);
 }
 
 // 5. Rating Breakdown (all questions)
@@ -129,16 +127,7 @@ while ($row = $rating_breakdown_result->fetch_assoc()) {
     <div class="main-content">
         <!-- Dashboard Section -->
         <div class="dashboard-section active">
-            <div class="header">
-                <h1 class="page-title">Dashboard</h1>
-                <div class="user-profile">
-                    <div class="notification-icon" style="position: relative; margin-right: 10px;">
-                        <i class="fas fa-bell" style="font-size: 20px;"></i>
-                    </div>
-                    <div class="user-avatar">U</div>
-                    <span>User</span>
-                </div>
-            </div>
+            <?php include 'notification.php'; ?>
 
             <div class="card-container">
                 <div class="card">
@@ -166,11 +155,11 @@ while ($row = $rating_breakdown_result->fetch_assoc()) {
 
             <div class="chart-container">
                 <div class="chart-card">
-                    <h3 class="chart-title">Satisfaction by Office</h3>
-                    <canvas id="satisfactionChart"></canvas>
+                    <h3 class="chart-title">Monthly Satisfaction Trend</h3>
+                    <canvas id="trendChart"></canvas>
                 </div>
                 <div class="chart-card">
-                    <h3 class="chart-title">Rating Breakdown (All Questions)</h3>
+                    <h3 class="chart-title">Rating Breakdown</h3>
                     <canvas id="ratingChart"></canvas>
                 </div>
             </div>
@@ -178,35 +167,52 @@ while ($row = $rating_breakdown_result->fetch_assoc()) {
 
         <script>
             // Pass PHP data to JavaScript
-            const officeLabels = <?php echo json_encode($office_labels); ?>;
-            const officeRatings = <?php echo json_encode($office_ratings); ?>;
+            const monthLabels = <?php echo json_encode($month_labels); ?>;
+            const monthRatings = <?php echo json_encode($month_ratings); ?>;
             const ratingLabels = <?php echo json_encode($rating_labels); ?>;
             const ratingCounts = <?php echo json_encode($rating_counts); ?>;
             const ratingColors = <?php echo json_encode(array_values($rating_colors)); ?>;
 
-            // Initialize Charts (original design)
+            // Initialize Charts
             document.addEventListener('DOMContentLoaded', () => {
-                // Satisfaction Chart
-                const satisfactionCtx = document.getElementById('satisfactionChart').getContext('2d');
-                new Chart(satisfactionCtx, {
-                    type: 'bar',
+                // Monthly Trend Chart
+                const trendCtx = document.getElementById('trendChart').getContext('2d');
+                new Chart(trendCtx, {
+                    type: 'line',
                     data: {
-                        labels: officeLabels.length ? officeLabels : ['No Data'],
+                        labels: monthLabels.length ? monthLabels : ['No Data'],
                         datasets: [{
-                            label: 'Average Rating',
-                            data: officeRatings.length ? officeRatings : [0],
-                            backgroundColor: 'rgba(26, 60, 94, 0.7)',
+                            label: 'Average Satisfaction',
+                            data: monthRatings.length ? monthRatings : [0],
+                            backgroundColor: 'rgba(26, 60, 94, 0.2)',
                             borderColor: 'rgba(26, 60, 94, 1)',
-                            borderWidth: 1
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: true
                         }]
                     },
                     options: {
                         responsive: true,
                         scales: {
-                            y: { beginAtZero: true, max: 5 }
+                            y: {
+                                beginAtZero: true,
+                                max: 5,
+                                title: {
+                                    display: true,
+                                    text: 'Satisfaction Rating'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            }
                         },
                         plugins: {
-                            legend: { display: false }
+                            legend: {
+                                display: false
+                            }
                         }
                     }
                 });
